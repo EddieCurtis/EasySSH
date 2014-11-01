@@ -50,9 +50,9 @@ public class SSHClient {
     }
     
     public int downloadFilesMatchingString(String searchString, String directory, boolean recursive) throws SSHException {        
-        Session session = SessionFactory.createSession(user, password, server + directory, port);        
+        Session session = SessionFactory.createSession(user, password, server, port);
         Set<String> filesToDownload = TerminalCommands.getMatchingFileList(session, directory, searchString);
-        
+        boolean downloaded = TerminalCommands.copyFiles(session, filesToDownload.toArray(new String[filesToDownload.size()]));
         return filesToDownload.size();
     }
 }
