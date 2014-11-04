@@ -17,7 +17,7 @@ public class TempTest {
        String password = scanner.next();
        System.out.print("Server: ");
        String server = scanner.next();
-       System.out.print("Password: ");
+       System.out.print("Port: ");
        int port = Integer.parseInt(scanner.next());       
        
        SSHClient client = new SSHClient(username, password, server, port);
