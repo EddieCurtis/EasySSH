@@ -22,7 +22,7 @@ public class TempTest {
        
        SSHClient client = new SSHClient(username, password, server, port);
        
-       int filesDownloaded = client.downloadFilesMatchingString("test");
+       int filesDownloaded = client.downloadFilesMatchingString("test", "/home/codenvy/");
        if(filesDownloaded > 0) {
            System.out.println("Successfully downloaded %d files");
        } else {
