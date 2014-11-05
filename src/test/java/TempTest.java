@@ -20,11 +20,11 @@ public class TempTest {
        System.out.print("Port: ");
        int port = Integer.parseInt(scanner.next());       
        
-       SSHClient client = new SSHClient(username, password, server, port);
+       SSHClient client = new SSHClient(username, password, server, "src/main/resources", port);
        
        int filesDownloaded = client.downloadFilesMatchingString("test", "/home/codenvy/");
        if(filesDownloaded > 0) {
-           System.out.println("Successfully downloaded %d files");
+           System.out.println(String.format("Successfully downloaded %d files", filesDownloaded));
        } else {
            System.out.println("No matching files found on server");
        }

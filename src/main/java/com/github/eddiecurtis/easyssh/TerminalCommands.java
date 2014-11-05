@@ -1,14 +1,16 @@
 package com.github.eddiecurtis.easyssh;
 
-import com.jcraft.jsch.ChannelExec;
-import com.jcraft.jsch.Session;
-
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.util.HashSet;
 import java.util.Set;
+
+import com.jcraft.jsch.ChannelExec;
+import com.jcraft.jsch.Session;
 
 class TerminalCommands {
     
@@ -42,58 +44,63 @@ class TerminalCommands {
         }
     }
     
-    static boolean copyFiles(Session session, String... fileNames) throws SSHException {
-        boolean success = false;
+    static int copyFiles(Session session, String localDirectory, String... fileNames) throws SSHException {
+        int filesDownloaded = 0;
         if (fileNames != null) {
-            String fileList = concatStrings(fileNames);
-            // TODO: I'd like to get it working this way, but only had success scp'ing files individually so far
-            String command = "scp -f \\{" + fileList + "\\} .";
-            System.out.println("running: " + command);
-            success = runCopy(session, command);
+            for (String fileName : fileNames) {
+	            boolean success = runCopy(localDirectory, session, fileName);
+	            if (success) {
+	            	filesDownloaded++;
+	            }
+            }
         }
-        return success;
+        return filesDownloaded;
     }
     
-    private static boolean runCopy(Session session, String command) throws SSHException {
+    private static boolean runCopy(String localDirectory, Session session, String fileName) throws SSHException {
         ChannelExec channel = null;
+        FileOutputStream out = null;
+        InputStream is = null;
+        
         try {
            channel = (ChannelExec) session.openChannel("exec");
-           channel.setCommand("command");
+           //TODO replace this with filename once tested
+           channel.setCommand("scp -f /home/codenvy/test1.txt");
            channel.connect();
            
-           OutputStream out=channel.getOutputStream();
-           out.write(new byte[] {0});
-           out.flush();
-           
-           InputStream is = channel.getInputStream();
+           is = channel.getInputStream();
            int status = is.read();
-           //TODO: check if the file needs writing manually or if the SCP command alone is enough
            if (status == 0 || status == 'C') {
+        	   out = new FileOutputStream(new File(localDirectory + fileName));
+        	   byte[] bytes = new byte[1024];
+        	   int read = 0;
+        	   while ((read = is.read(bytes)) > -1) {
+        		   out.write(bytes, 0, read);
+        	   }
                return true;
            }
-           throw new SSHException("Copy command returned status code: " + status);
+           return false;
         } catch (Exception e) {
-            throw new SSHException("Error copying files", e);
+            throw new SSHException("Error downloading file: " + fileName, e);
         } finally {
             if (channel != null) {
                 channel.disconnect();
             }
+            if (out != null) {
+            	try {
+	                out.close();
+                } catch (IOException e) {
+	                e.printStackTrace();
+                }
+            }
+            if (is != null) {
+            	try {
+	                is.close();
+                } catch (IOException e) {
+	                e.printStackTrace();
+                }
+            }
         }
-    }
-    
-    private static String concatStrings(String[] strings) {
-       String result = null;
-       StringBuilder sb = new StringBuilder();
-       for (String file : strings) {
-           if (file != null) {
-               sb.append(file + ",");
-           }
-       }
-       if (sb.length() > 0) {
-           // Remove the last comma from the StringBuilder before returning
-           result = sb.subSequence(0, sb.length() - 1).toString();
-       }
-       return result;
     }
     
 }
