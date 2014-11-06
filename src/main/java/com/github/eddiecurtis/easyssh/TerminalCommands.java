@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -57,31 +58,41 @@ class TerminalCommands {
         return filesDownloaded;
     }
     
-    private static boolean runCopy(String localDirectory, Session session, String fileName) throws SSHException {
+    private static boolean runCopy(String localDirectory, Session session, String fileLocation) throws SSHException {
         ChannelExec channel = null;
         FileOutputStream out = null;
         InputStream is = null;
+        OutputStream os = null;
         
         try {
            channel = (ChannelExec) session.openChannel("exec");
-           //TODO replace this with filename once tested
-           channel.setCommand("scp -f /home/codenvy/test1.txt");
-           channel.connect();
-           
+           channel.setCommand("scp -f " + fileLocation);
            is = channel.getInputStream();
+           os = channel.getOutputStream();
+           channel.connect();
+           os.write(new byte[] {0}, 0, 1);
+           os.flush();
+           
            int status = is.read();
            if (status == 0 || status == 'C') {
-        	   out = new FileOutputStream(new File(localDirectory + fileName));
+        	   
+        	   //TODO create directory if it doesn't already exist
+        	   out = new FileOutputStream(new File(localDirectory + fileLocation));
         	   byte[] bytes = new byte[1024];
+        	   // Files start with '0644 '
+        	   is.read(bytes, 0, 5);
         	   int read = 0;
         	   while ((read = is.read(bytes)) > -1) {
         		   out.write(bytes, 0, read);
         	   }
+        	   
+        	   //TODO this currently seems to only download information about the file.
+        	   //Need to actually download the contents too, possibly by sending a '0' again.
                return true;
            }
            return false;
         } catch (Exception e) {
-            throw new SSHException("Error downloading file: " + fileName, e);
+            throw new SSHException("Error downloading file: " + fileLocation, e);
         } finally {
             if (channel != null) {
                 channel.disconnect();
@@ -89,16 +100,17 @@ class TerminalCommands {
             if (out != null) {
             	try {
 	                out.close();
-                } catch (IOException e) {
-	                e.printStackTrace();
-                }
+                } catch (IOException e) {}
             }
             if (is != null) {
             	try {
 	                is.close();
-                } catch (IOException e) {
-	                e.printStackTrace();
-                }
+                } catch (IOException e) {}
+            }
+            if (os != null) {
+            	try {
+            		os.close();
+            	} catch (IOException e) {}
             }
         }
     }
