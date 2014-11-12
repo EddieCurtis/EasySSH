@@ -24,7 +24,6 @@ public class SSHClient {
     private final String user;
     private final String password;
     private final String server;
-    private final String localDirectory;
     private final int port;
     
     /**
@@ -32,10 +31,9 @@ public class SSHClient {
      * @param user - Username on the remote server
      * @param password - Password on the remote server
      * @param server - The server IP address or hostname
-     * @param localDirectory - TODO: this will be removed soon and added to individual fileDownload methods
      */
-    public SSHClient(String user, String password, String server, String localDirectory) {
-        this(user, password, server, localDirectory, DEFAULT_PORT);
+    public SSHClient(String user, String password, String server) {
+        this(user, password, server, DEFAULT_PORT);
     }
     
     /**
@@ -43,10 +41,9 @@ public class SSHClient {
      * @param user - Username on the remote server
      * @param password - Password on the remote server
      * @param server - The server IP address or hostname
-     * @param localDirectory - TODO: this will be removed soon and added to individual fileDownload methods
      * @param port - The port used to connect to the server
      */
-    public SSHClient(String user, String password, String server, String localDirectory, int port) {
+    public SSHClient(String user, String password, String server, int port) {
         
         if (user == null) {
             throw new NullPointerException("Username must not be null");
@@ -61,7 +58,6 @@ public class SSHClient {
         this.user = user;
         this.password = password;
         this.server = server;
-        this.localDirectory = localDirectory;
         this.port = port;
     }
     
@@ -71,8 +67,8 @@ public class SSHClient {
      * @return Returns the number of files that were downloaded from the server
      * @throws SSHException If there was a problem connecting to the server
      */
-    public int downloadFilesMatchingString(String searchString) throws SSHException {
-        return downloadFilesMatchingString(searchString, DEFAULT_DIRECTORY);
+    public int downloadFilesMatchingString(String searchString, String localDirectory) throws SSHException {
+        return downloadFilesMatchingString(searchString, localDirectory, DEFAULT_DIRECTORY);
     }
     
     /**
@@ -82,32 +78,32 @@ public class SSHClient {
      * @return Returns the number of files that were downloaded from the server
      * @throws SSHException If there was a problem connecting to the server
      */
-    public int downloadFilesMatchingString(String searchString, boolean recursive) throws SSHException {
-        return downloadFilesMatchingString(searchString, DEFAULT_DIRECTORY, recursive);
+    public int downloadFilesMatchingString(String searchString, String localDirectory, boolean recursive) throws SSHException {
+        return downloadFilesMatchingString(searchString, localDirectory, DEFAULT_DIRECTORY, recursive);
     }
     
     /**
      * Downloads any files matching the specified search string from the server this client is connected to
      * @param searchString - The String to search for
-     * @param directory - The directory on the server to start searching in
+     * @param remoteDirectory - The directory on the server to start searching in
      * @return Returns the number of files that were downloaded from the server
      * @throws SSHException If there was a problem connecting to the server
      */
-    public int downloadFilesMatchingString(String searchString, String directory) throws SSHException {
-        return downloadFilesMatchingString(searchString, directory, DEFAULT_RECURSIVE);
+    public int downloadFilesMatchingString(String searchString, String localDirectory, String remoteDirectory) throws SSHException {
+        return downloadFilesMatchingString(searchString, localDirectory, remoteDirectory, DEFAULT_RECURSIVE);
     }
     
     /**
      * Downloads any files matching the specified search string from the server this client is connected to
      * @param searchString - The String to search for
-     * @param directory - The directory on the server to start searching in
+     * @param remoteDirectory - The directory on the server to start searching in
      * @param recursive - True if the search should be done recursively
      * @return Returns the number of files that were downloaded from the server
      * @throws SSHException If there was a problem connecting to the server
      */
-    public int downloadFilesMatchingString(String searchString, String directory, boolean recursive) throws SSHException {        
+    public int downloadFilesMatchingString(String searchString, String localDirectory, String remoteDirectory, boolean recursive) throws SSHException {        
         Session session = SessionFactory.createSession(user, password, server, port);
-        Set<String> filesToDownload = TerminalCommands.getMatchingFileList(session, directory, searchString);
+        Set<String> filesToDownload = TerminalCommands.getMatchingFileList(session, remoteDirectory, searchString);
         int downloaded = TerminalCommands.copyFiles(session, localDirectory, filesToDownload.toArray(new String[filesToDownload.size()]));
         int failures = filesToDownload.size() - downloaded;
         if (failures > 0) {
