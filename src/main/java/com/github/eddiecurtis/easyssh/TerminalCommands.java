@@ -3,13 +3,13 @@ package com.github.eddiecurtis.easyssh;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.github.eddiecurtis.easyssh.utils.CloseableUtils;
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.Session;
 
@@ -34,11 +34,7 @@ class TerminalCommands {
         } catch (Exception e) {
             throw new SSHException("Error getting files list", e);
         } finally {
-            if (br != null) {
-                try {
-                    br.close();
-                } catch (Exception e) {};
-            }
+        	CloseableUtils.closeQuietly(br);
             if (channel != null) {
                 channel.disconnect();
             }
@@ -82,6 +78,7 @@ class TerminalCommands {
         	   // Files start with '0644 '
         	   is.read(bytes, 0, 5);
         	   int read = 0;
+        	   // FIXME: I don't think this way of reading is correct
         	   while ((read = is.read(bytes)) > -1) {
         		   out.write(bytes, 0, read);
         	   }
@@ -97,21 +94,7 @@ class TerminalCommands {
             if (channel != null) {
                 channel.disconnect();
             }
-            if (out != null) {
-            	try {
-	                out.close();
-                } catch (IOException e) {}
-            }
-            if (is != null) {
-            	try {
-	                is.close();
-                } catch (IOException e) {}
-            }
-            if (os != null) {
-            	try {
-            		os.close();
-            	} catch (IOException e) {}
-            }
+            CloseableUtils.closeQuietly(out, is, os);
         }
     }
     
