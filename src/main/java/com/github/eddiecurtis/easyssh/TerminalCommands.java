@@ -56,35 +56,38 @@ class TerminalCommands {
     
     private static boolean runCopy(String localDirectory, Session session, String fileLocation) throws SSHException {
         ChannelExec channel = null;
-        FileOutputStream out = null;
-        InputStream is = null;
-        OutputStream os = null;
+        FileOutputStream fileOut = null;
+        InputStream channelIn = null;
+        OutputStream channelOut = null;
         
         try {
            channel = (ChannelExec) session.openChannel("exec");
            channel.setCommand("scp -f " + fileLocation);
-           is = channel.getInputStream();
-           os = channel.getOutputStream();
+           channelIn = channel.getInputStream();
+           channelOut = channel.getOutputStream();
            channel.connect();
-           os.write(new byte[] {0}, 0, 1);
-           os.flush();
+           channelOut.write(new byte[] {0}, 0, 1);
+           channelOut.flush();
            
-           int status = is.read();
+           int status = channelIn.read();
            if (status == 0 || status == 'C') {
+        	   byte[] buff = new byte[1024];
         	   
-        	   //TODO create directory if it doesn't already exist
-        	   out = new FileOutputStream(new File(localDirectory + fileLocation));
-        	   byte[] bytes = new byte[1024];
-        	   // Files start with '0644 '
-        	   is.read(bytes, 0, 5);
-        	   int read = 0;
-        	   // FIXME: I don't think this way of reading is correct
-        	   while ((read = is.read(bytes)) > -1) {
-        		   out.write(bytes, 0, read);
-        	   }
+        	   // Read the rest of these characters as it's just header information
+        	   channelIn.read(buff, 0, channelIn.available());
         	   
-        	   //TODO this currently seems to only download information about the file.
-        	   //Need to actually download the contents too, possibly by sending a '0' again.
+        	   // This write signifies we're ready to read the file contents
+        	   channelOut.write(new byte[] {0}, 0, 1);
+               channelOut.flush();
+               
+               String finalFileLocation = localDirectory + fileLocation;
+               ensureDirectory(finalFileLocation);
+               fileOut = new FileOutputStream(new File(finalFileLocation));
+               int bytesRead = 0;
+               buff = new byte[1024];
+               while (channelIn.available() > 0 && (bytesRead = channelIn.read(buff)) != -1) {
+            	   fileOut.write(buff, 0, bytesRead);
+               }
                return true;
            }
            return false;
@@ -94,8 +97,12 @@ class TerminalCommands {
             if (channel != null) {
                 channel.disconnect();
             }
-            CloseableUtils.closeQuietly(out, is, os);
+            CloseableUtils.closeQuietly(fileOut, channelIn, channelOut);
         }
+    }
+    
+	private static void ensureDirectory(String finalFileLocation) {
+		new File(finalFileLocation.substring(0, finalFileLocation.lastIndexOf('/'))).mkdirs();
     }
     
 }
